@@ -3,53 +3,136 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>File Indexer</title>
+    <title>File Search Chatbot</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 30px;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f7f7f7;
         }
-        input[type="text"], input[type="submit"] {
-            padding: 8px;
-            margin: 5px 0;
+        .chat-container {
+            width: 400px;
+            max-height: 600px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+            padding: 20px;
         }
-        .result-item {
-            margin: 5px 0;
+        .chat-box {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .user-message, .bot-message {
+            padding: 10px;
+            border-radius: 10px;
+        }
+        .user-message {
+            background-color: #c0f2c0;
+            align-self: flex-end;
+            max-width: 70%;
+        }
+        .bot-message {
+            background-color: #e0e0e0;
+            align-self: flex-start;
+            max-width: 70%;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            width: 100%;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
         }
     </style>
 </head>
 <body>
-    <h1>File Indexer and Search</h1>
-
-    <h2>Index Files</h2>
-    <form action="/" method="post">
-        <label for="folder_path">Enter folder path to index:</label><br>
-        <input type="text" id="folder_path" name="folder_path" required><br>
-        <input type="submit" value="Index Files">
-    </form>
-
-    <hr>
-
-    <h2>Search Files</h2>
-    <form action="/query" method="post">
-        <label for="query">Enter search query:</label><br>
-        <input type="text" id="query" name="query" required><br>
-        <input type="submit" value="Search">
-    </form>
-
-    {% if query %}
-        <h3>Search Results for "{{ query }}"</h3>
-        <div id="results">
-            {% if query_results %}
-                {% for result in query_results %}
-                    <div class="result-item">
-                        <a href="{{ url_for('open', filepath=result) }}" target="_blank">{{ result }}</a>
-                    </div>
-                {% endfor %}
-            {% else %}
-                <p>No matching files found.</p>
-            {% endif %}
+    <div class="chat-container">
+        <div class="chat-box" id="chatBox">
+            <!-- Messages will appear here -->
         </div>
-    {% endif %}
+        <input type="text" id="userInput" placeholder="Type your message..." onkeydown="if(event.key === 'Enter'){sendMessage();}">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <script>
+        let chatBox = document.getElementById("chatBox");
+        let userInput = document.getElementById("userInput");
+
+        function addMessage(message, type) {
+            let messageDiv = document.createElement("div");
+            messageDiv.classList.add(type + "-message");
+            messageDiv.textContent = message;
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function sendMessage() {
+            let userMessage = userInput.value.trim();
+            if (userMessage) {
+                addMessage(userMessage, "user");
+                userInput.value = "";
+
+                // Handle folder indexing
+                if (userMessage.toLowerCase().startsWith("index folder")) {
+                    let folderPath = userMessage.replace("index folder", "").trim();
+                    indexFolder(folderPath);
+                } else {
+                    queryFiles(userMessage);
+                }
+            }
+        }
+
+        function queryFiles(queryText) {
+            fetch('/query', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ query: queryText })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.messages) {
+                    data.messages.forEach(msg => {
+                        addMessage(msg.text, msg.type);
+                    });
+                }
+            });
+        }
+
+        function indexFolder(folderPath) {
+            fetch('/index_folder', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ folder_path: folderPath })
+            })
+            .then(response => response.json())
+            .then(data => {
+                addMessage(data.message, "bot");
+            });
+        }
+    </script>
 </body>
 </html>

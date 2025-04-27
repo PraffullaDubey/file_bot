@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, jsonify
 import os
 from PyPDF2 import PdfReader
 from docx import Document
@@ -7,13 +7,12 @@ import openpyxl
 import subprocess
 import sys
 
-# Supported file types
-SUPPORTED_EXT = [".pdf", ".docx", ".pptx", ".txt", ".xlsx"]
-
 app = Flask(__name__)
 
-# Global index
+SUPPORTED_EXT = [".pdf", ".docx", ".pptx", ".txt", ".xlsx"]
 file_index = {}
+folder_indexed = False  # Track if folder has been indexed
+folder_path = ""  # Store the folder path
 
 def extract_text(filepath):
     ext = os.path.splitext(filepath)[1].lower()
@@ -61,6 +60,44 @@ def query_files(query, index):
             results.append(path)
     return results
 
+@app.route("/")
+def index():
+    return render_template("chatbot.html")
+
+@app.route("/index_folder", methods=["POST"])
+def index_folder():
+    global folder_indexed, folder_path, file_index
+    folder = request.json.get("folder_path").strip()
+    if os.path.isdir(folder):
+        folder_path = folder  # Store folder path
+        print("Indexing files...")
+        file_index = index_files(folder)
+        folder_indexed = True
+        print(f"Indexed {len(file_index)} files.")
+        return jsonify({"message": "Folder indexed successfully!"})
+    return jsonify({"message": "Invalid folder path!"})
+
+@app.route("/query_files", methods=["POST"])
+def query_files_route():
+    query = request.json.get("query")
+    if not folder_indexed:
+        return jsonify({"files": [], "message": "Folder has not been indexed. Please index a folder first."})
+    
+    matches = query_files(query, file_index)
+    return jsonify({"files": matches})
+
+@app.route("/open_file", methods=["POST"])
+def open_file_route():
+    file_path = request.json.get("file_path")
+    try:
+        if os.path.isfile(file_path):
+            open_file(file_path)  # Use OS to open the file
+            return jsonify({"message": f"Opening file: {file_path}"})
+        else:
+            return jsonify({"message": "File not found."})
+    except Exception as e:
+        return jsonify({"message": f"Error opening file: {e}"})
+
 def open_file(filepath):
     try:
         if os.name == 'nt':  # Windows
@@ -69,30 +106,6 @@ def open_file(filepath):
             subprocess.call(['open' if sys.platform == 'darwin' else 'xdg-open', filepath])
     except Exception as e:
         print(f"Error opening file: {e}")
-
-@app.route("/", methods=["GET", "POST"])
-def index():
-    global file_index
-    if request.method == "POST":
-        folder = request.form.get("folder_path").strip()
-        if os.path.isdir(folder):
-            print("Indexing files...")
-            file_index = index_files(folder)
-            print(f"Indexed {len(file_index)} files.")
-            return render_template("index.html", files=file_index.keys(), query_results=[], query="")
-
-    return render_template("index.html", files=[], query_results=[], query="")
-
-@app.route("/query", methods=["POST"])
-def query():
-    query_text = request.form.get("query").strip()
-    results = query_files(query_text, file_index)
-    return render_template("index.html", files=file_index.keys(), query_results=results, query=query_text)
-
-@app.route("/open/<path:filepath>")
-def open(filepath):
-    open_file(filepath)
-    return redirect(url_for('index'))
 
 if __name__ == "__main__":
     app.run(debug=True)
