@@ -1,0 +1,9 @@
+FLask
+werkzeug
+openpyxl
+python-docx
+python-pptx
+PyPDF2
+web-browser
+python-dotenv
+fpdf
