@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Indexer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+        }
+        input[type="text"], input[type="submit"] {
+            padding: 8px;
+            margin: 5px 0;
+        }
+        .result-item {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>File Indexer and Search</h1>
+
+    <h2>Index Files</h2>
+    <form action="/" method="post">
+        <label for="folder_path">Enter folder path to index:</label><br>
+        <input type="text" id="folder_path" name="folder_path" required><br>
+        <input type="submit" value="Index Files">
+    </form>
+
+    <hr>
+
+    <h2>Search Files</h2>
+    <form action="/query" method="post">
+        <label for="query">Enter search query:</label><br>
+        <input type="text" id="query" name="query" required><br>
+        <input type="submit" value="Search">
+    </form>
+
+    {% if query %}
+        <h3>Search Results for "{{ query }}"</h3>
+        <div id="results">
+            {% if query_results %}
+                {% for result in query_results %}
+                    <div class="result-item">
+                        <a href="{{ url_for('open', filepath=result) }}" target="_blank">{{ result }}</a>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p>No matching files found.</p>
+            {% endif %}
+        </div>
+    {% endif %}
+</body>
+</html>
